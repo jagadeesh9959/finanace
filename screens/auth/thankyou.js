@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function ThankYou({ navigation }) {
   useEffect(() => {
     const timer = setTimeout(() => {
-      navigation.navigate("Dashboard");
+      navigation.navigate("bottomTabs");
     }, 5000);
 
     return () => clearTimeout(timer);

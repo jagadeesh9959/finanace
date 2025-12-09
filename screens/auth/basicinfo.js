@@ -7,36 +7,24 @@ import {
   StyleSheet,
   Alert,
   Modal,
-  Image,
   ScrollView,
   KeyboardAvoidingView,
-  Platform,
   TouchableWithoutFeedback,
   Keyboard,
+  Platform,
 } from "react-native";
+
 import DateTimePicker from "@react-native-community/datetimepicker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-
 // ----------------------------------------------------------
-//  1. Custom Components (NO CHANGE)
+//  1. PAN Component
 // ----------------------------------------------------------
 
-const PanInputComponent = ({
-  pan,
-  onPanChange,
-  onFetchDetails,
-  onUploadImage,
-  panImage,
-  panVerificationMethod,
-  onSetVerificationMethod,
-  panVerified,
-  style,
-}) => {
+const PanInputComponent = ({ pan, onPanChange, panVerified }) => {
   return (
-    <View style={[styles.panContainer, style]}>
+    <View style={styles.panContainer}>
       <Text style={styles.panLabel}>PAN Number</Text>
 
       <TextInput
@@ -46,78 +34,19 @@ const PanInputComponent = ({
         onChangeText={onPanChange}
         autoCapitalize="characters"
         placeholder="ABCDE1234F"
+        editable={!panVerified}
       />
 
-      {!panVerified && (
-        <View>
-          <Text style={styles.methodLabel}>Choose Verification Method:</Text>
-
-          <View style={styles.methodButtonsContainer}>
-            <TouchableOpacity
-              style={[
-                styles.methodButton,
-                panVerificationMethod === "fetch" && styles.methodButtonActive,
-              ]}
-              onPress={() => onSetVerificationMethod("fetch")}
-            >
-              <Text
-                style={[
-                  styles.methodButtonText,
-                  panVerificationMethod === "fetch" &&
-                    styles.methodButtonTextActive,
-                ]}
-              >
-                Fetch Details
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.methodButton,
-                panVerificationMethod === "upload" &&
-                  styles.methodButtonActive,
-              ]}
-              onPress={() => onSetVerificationMethod("upload")}
-            >
-              <Text
-                style={[
-                  styles.methodButtonText,
-                  panVerificationMethod === "upload" &&
-                    styles.methodButtonTextActive,
-                ]}
-              >
-                Upload Card
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-
-      {panVerificationMethod === "fetch" && !panVerified && (
-        <TouchableOpacity style={styles.fetchButton} onPress={onFetchDetails}>
-          <Text style={styles.buttonText}>Fetch Details</Text>
-        </TouchableOpacity>
-      )}
-
-      {panVerificationMethod === "upload" && !panVerified && (
-        <TouchableOpacity style={styles.uploadArea} onPress={onUploadImage}>
-          {panImage ? (
-            <View style={styles.uploadedImageContainer}>
-              <Image source={{ uri: panImage }} style={styles.uploadedImage} />
-              <Text style={styles.uploadedText}>✓ PAN Card Uploaded</Text>
-            </View>
-          ) : (
-            <>
-              <Text style={styles.uploadIcon}>⬆️</Text>
-              <Text style={styles.uploadText}>Upload PAN Card Image</Text>
-            </>
-          )}
-        </TouchableOpacity>
+      {panVerified && (
+        <Text style={styles.verificationStatus}>✓ PAN Verified</Text>
       )}
     </View>
   );
 };
 
+// ----------------------------------------------------------
+//  2. Aadhaar Component (Option A)
+// ----------------------------------------------------------
 
 const AadharInputComponent = ({
   aadhar,
@@ -127,7 +56,7 @@ const AadharInputComponent = ({
 }) => {
   return (
     <View style={styles.aadharContainer}>
-      <Text style={styles.aadharLabel}>Aadhar Number</Text>
+      <Text style={styles.aadharLabel}>Aadhaar Number</Text>
 
       <TextInput
         style={styles.aadharInputField}
@@ -141,24 +70,20 @@ const AadharInputComponent = ({
 
       {!aadharVerified ? (
         <TouchableOpacity style={styles.sendOtpButton} onPress={onSendOtp}>
-          <Text style={styles.sendOtpButtonText}>Send OTP</Text>
+          <Text style={styles.sendOtpButtonText}>VERIFY</Text>
         </TouchableOpacity>
       ) : (
-        <View style={styles.verifiedButton}>
-          <Text style={styles.verifiedText}>✓ Verified</Text>
-        </View>
+        <Text style={styles.verificationStatus}>✓ Aadhaar Verified</Text>
       )}
     </View>
   );
 };
 
+// ----------------------------------------------------------
+//  OTP Component
+// ----------------------------------------------------------
 
-const OtpVerificationModal = ({
-  visible,
-  generatedOtp,
-  onVerify,
-  onClose,
-}) => {
+const OtpVerificationModal = ({ visible, generatedOtp, onVerify, onClose }) => {
   const [otpInput, setOtpInput] = useState("");
 
   const handleVerify = () => {
@@ -177,9 +102,7 @@ const OtpVerificationModal = ({
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Enter OTP</Text>
-            <Text style={styles.modalSubtitle}>
-              Enter 6-digit OTP sent to your mobile
-            </Text>
+            <Text style={styles.modalSubtitle}>Enter 6-digit OTP</Text>
 
             <TextInput
               style={styles.otpModalInput}
@@ -210,126 +133,74 @@ const OtpVerificationModal = ({
   );
 };
 
-
 // ----------------------------------------------------------
-//  2. MAIN COMPONENT UPDATED WITH SAFEAREAVIEW
+// MAIN COMPONENT
 // ----------------------------------------------------------
 
 export default function BasicInfo({ navigation, route }) {
   const mobile = route?.params?.mobile ?? null;
 
-  if (!mobile) console.warn("⚠️ Mobile not received in BasicInfo");
-
-  // All your state remains SAME
+  // States
   const [fullName, setFullName] = useState("");
   const [pan, setPan] = useState("");
   const [aadhar, setAadhar] = useState("");
-  const [panImage, setPanImage] = useState("");
   const [dob, setDob] = useState(null);
   const [showPicker, setShowPicker] = useState(false);
   const [email, setEmail] = useState("");
+
   const [panVerified, setPanVerified] = useState(false);
   const [aadharVerified, setAadharVerified] = useState(false);
+
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [generatedAadharOtp, setGeneratedAadharOtp] = useState("");
+
   const [accountNumber, setAccountNumber] = useState("");
   const [bankName, setBankName] = useState("");
   const [ifsc, setIfsc] = useState("");
   const [branch, setBranch] = useState("");
-  const [panVerificationMethod, setPanVerificationMethod] = useState(null);
+
   const [accountNumberError, setAccountNumberError] = useState("");
   const [ifscError, setIfscError] = useState("");
 
-
-  // ----------------------------------------
-  // VALIDATION, OTP, IMAGE functions (NO CHANGE)
-  // ----------------------------------------
+  // ----------------------------------------------------------
+  // PAN Verify Logic
+  // ----------------------------------------------------------
 
   const validatePan = (text) => {
     const regex = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
     const formatted = text.toUpperCase();
     setPan(formatted);
-    return regex.test(formatted);
+
+    if (regex.test(formatted)) {
+      setPanVerified(true);
+      Alert.alert("Success", "PAN Verified Successfully!");
+    } else {
+      setPanVerified(false);
+    }
   };
+
+  // ----------------------------------------------------------
+  // Aadhaar Logic (Option A)
+  // ----------------------------------------------------------
 
   const validateAadhar = (text) => {
-    const regex = /^[0-9]{12}$/;
     setAadhar(text);
-    return regex.test(text);
+    return /^[0-9]{12}$/.test(text);
   };
-
-  const validateAccountNumber = (text) => {
-    const regex = /^[0-9]*$/;
-    setAccountNumber(text);
-
-    if (!regex.test(text)) {
-      setAccountNumberError("Account number must contain only digits");
-    } else if (text.length < 11) {
-      setAccountNumberError(`Minimum 11 digits (${text.length}/11)`);
-    } else if (text.length > 18) {
-      setAccountNumberError("Max 18 digits allowed");
-    } else {
-      setAccountNumberError("");
-    }
-  };
-
-  const validateIfscCode = (text) => {
-    const regex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
-    const formatted = text.toUpperCase();
-    setIfsc(formatted);
-
-    if (formatted && !regex.test(formatted)) {
-      setIfscError("Invalid IFSC (SBIN0000001 format)");
-    } else {
-      setIfscError("");
-    }
-  };
-
-
-  const handleUploadPanImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      if (!validatePan(pan)) {
-        Alert.alert("Invalid PAN", "Enter valid PAN before uploading.");
-        return;
-      }
-
-      setPanImage(result.assets[0].uri);
-      setPanVerified(true);
-      Alert.alert("Success", "PAN verified via image!");
-    }
-  };
-
-
-  const handleFetchDetails = () => {
-    if (validatePan(pan)) {
-      setPanVerified(true);
-      Alert.alert("Success", "PAN details verified!");
-    } else {
-      Alert.alert("Invalid PAN", "Enter a valid PAN.");
-    }
-  };
-
 
   const handleSendOtp = async () => {
     if (!validateAadhar(aadhar)) {
-      Alert.alert("Invalid Aadhar", "Enter 12-digit Aadhar.");
+      Alert.alert("Invalid Aadhaar", "Enter 12-digit Aadhaar.");
       return;
     }
 
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     setGeneratedAadharOtp(otp);
-    await AsyncStorage.setItem("aadharOtp", otp);
 
-    console.log("📌 Aadhar OTP:", otp);
+    console.log("Aadhaar OTP:", otp);
+
     setShowOtpModal(true);
   };
-
 
   const handleOtpVerification = (verified) => {
     if (verified) {
@@ -338,44 +209,56 @@ export default function BasicInfo({ navigation, route }) {
     }
   };
 
+  // ----------------------------------------------------------
+  // Bank Inputs Validation
+  // ----------------------------------------------------------
 
-  const storeBasicInfo = async (data) => {
-    try {
-      await AsyncStorage.setItem("@BasicInfoData", JSON.stringify(data));
-      return true;
-    } catch (err) {
-      Alert.alert("Error", "Failed to save data.");
-      return false;
+  const validateAccountNumber = (text) => {
+    const regex = /^[0-9]*$/;
+    setAccountNumber(text);
+
+    if (!regex.test(text)) {
+      setAccountNumberError("Digits only");
+    } else if (text.length < 11) {
+      setAccountNumberError("Minimum 11 digits");
+    } else {
+      setAccountNumberError("");
     }
   };
 
+  const validateIfsc = (text) => {
+    const formatted = text.toUpperCase();
+    setIfsc(formatted);
+
+    const regex = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+    if (!regex.test(formatted)) setIfscError("Invalid IFSC (SBIN0000001)");
+    else setIfscError("");
+  };
+
+  // ----------------------------------------------------------
+  // Proceed
+  // ----------------------------------------------------------
 
   const proceed = async () => {
     if (!fullName || !dob || !email) {
-      Alert.alert("Missing Details", "Fill all required fields.");
+      Alert.alert("Missing Details", "Fill required fields.");
+      return;
+    }
+
+    if (!panVerified || !aadharVerified) {
+      Alert.alert("Verification Required", "Verify PAN & Aadhaar.");
       return;
     }
 
     if (!accountNumber || !bankName || !ifsc || !branch) {
-      Alert.alert("Missing Bank Details", "Fill all bank details.");
+      Alert.alert("Missing Bank Details", "Fill bank details.");
       return;
     }
 
-    if (!panVerified) {
-      Alert.alert("PAN Not Verified");
-      return;
-    }
-
-    if (!aadharVerified) {
-      Alert.alert("Aadhar Not Verified");
-      return;
-    }
-
-    const basicInfoData = {
+    const data = {
       fullName,
       mobile,
       pan,
-      panImage,
       aadhar,
       dob: dob.toISOString(),
       email,
@@ -385,15 +268,14 @@ export default function BasicInfo({ navigation, route }) {
       branch,
     };
 
-    const saved = await storeBasicInfo(basicInfoData);
-    if (saved) navigation.navigate("ProfessionalInfo");
+    await AsyncStorage.setItem("@BasicInfoData", JSON.stringify(data));
+
+    navigation.navigate("ProfessionalInfo");
   };
 
-
-
-  // ----------------------------------------------------------
-  //  FINAL UI WITH SAFEAREAVIEW + KEYBOARD DISMISS
-  // ----------------------------------------------------------
+  // ==========================================================
+  // UI
+  // ==========================================================
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -402,39 +284,27 @@ export default function BasicInfo({ navigation, route }) {
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-          <ScrollView
-            contentContainerStyle={styles.scrollContentContainer}
-            keyboardShouldPersistTaps="handled"
-          >
+          <ScrollView contentContainerStyle={styles.scrollContentContainer}>
             <Text style={styles.step}>Step 1 of 4</Text>
             <Text style={styles.title}>Basic Information</Text>
 
-            {/* FULL NAME */}
+            {/* Full Name */}
             <Text style={styles.panLabel}>Full Name</Text>
             <TextInput
               style={styles.input}
-              placeholder="Full Name"
               value={fullName}
               onChangeText={setFullName}
+              placeholder="Full Name"
             />
 
             {/* PAN */}
             <PanInputComponent
               pan={pan}
               onPanChange={validatePan}
-              onFetchDetails={handleFetchDetails}
-              onUploadImage={handleUploadPanImage}
-              panImage={panImage}
-              panVerificationMethod={panVerificationMethod}
-              onSetVerificationMethod={setPanVerificationMethod}
               panVerified={panVerified}
             />
 
-            {panVerified && (
-              <Text style={styles.verificationStatus}>✓ PAN Verified</Text>
-            )}
-
-            {/* AADHAR */}
+            {/* Aadhaar */}
             <AadharInputComponent
               aadhar={aadhar}
               onAadharChange={validateAadhar}
@@ -445,34 +315,34 @@ export default function BasicInfo({ navigation, route }) {
             {/* DOB */}
             <TouchableOpacity onPress={() => setShowPicker(true)}>
               <Text style={styles.panLabel}>Date of Birth</Text>
-              <View style={styles.input}>
+              <View style={styles.dobInput}>
                 <Text style={{ color: dob ? "#000" : "#777" }}>
-                  {dob ? dob.toDateString() : "Select DOB"}
-                </Text>
-              </View>
+                {dob ? dob.toDateString() : "Select DOB"}
+              </Text>
+             </View>
+
             </TouchableOpacity>
 
             {showPicker && (
               <DateTimePicker
                 value={dob || new Date()}
                 mode="date"
-                maximumDate={new Date()}
                 display="spinner"
-                onChange={(event, selectedDate) => {
+                maximumDate={new Date()}
+                onChange={(e, selected) => {
                   setShowPicker(false);
-                  if (selectedDate) setDob(selectedDate);
+                  if (selected) setDob(selected);
                 }}
               />
             )}
 
-            {/* EMAIL */}
-            <Text style={styles.panLabel}>Email Address</Text>
+            {/* Email */}
+            <Text style={styles.panLabel}>Email</Text>
             <TextInput
               style={styles.input}
-              placeholder="Email"
-              keyboardType="email-address"
               value={email}
               onChangeText={setEmail}
+              placeholder="Email Address"
             />
 
             {/* BANK DETAILS */}
@@ -482,8 +352,8 @@ export default function BasicInfo({ navigation, route }) {
             <TextInput
               style={[styles.input, accountNumberError && styles.inputError]}
               placeholder="Account Number"
-              keyboardType="numeric"
               value={accountNumber}
+              keyboardType="numeric"
               onChangeText={validateAccountNumber}
             />
             {accountNumberError ? (
@@ -503,7 +373,7 @@ export default function BasicInfo({ navigation, route }) {
               style={[styles.input, ifscError && styles.inputError]}
               placeholder="SBIN0000001"
               value={ifsc}
-              onChangeText={validateIfscCode}
+              onChangeText={validateIfsc}
               autoCapitalize="characters"
             />
             {ifscError ? (
@@ -518,7 +388,7 @@ export default function BasicInfo({ navigation, route }) {
               onChangeText={setBranch}
             />
 
-            {/* CONTINUE */}
+            {/* Continue */}
             <TouchableOpacity
               style={[
                 styles.button,
@@ -530,7 +400,7 @@ export default function BasicInfo({ navigation, route }) {
               <Text style={styles.buttonText}>Continue</Text>
             </TouchableOpacity>
 
-            {/* OTP MODAL */}
+            {/* OTP Modal */}
             <OtpVerificationModal
               visible={showOtpModal}
               generatedOtp={generatedAadharOtp}
@@ -544,10 +414,8 @@ export default function BasicInfo({ navigation, route }) {
   );
 }
 
-
-
 // ----------------------------------------------------------
-//  3. UPDATED STYLES (ONLY TOP ADDED SAFE AREA STYLES)
+// Styles
 // ----------------------------------------------------------
 
 const styles = StyleSheet.create({
@@ -562,11 +430,11 @@ const styles = StyleSheet.create({
   },
 
   step: {
-    color: "#777",
-    marginBottom: 5,
-    marginTop: 10,
     fontSize: 14,
+    marginBottom: 5,
+    color: "#777",
   },
+
   title: {
     fontSize: 26,
     fontWeight: "700",
@@ -574,150 +442,79 @@ const styles = StyleSheet.create({
   },
 
   input: {
-    width: "100%",
     height: 50,
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 10,
     paddingHorizontal: 15,
+    marginBottom: 12,
     fontSize: 16,
-    justifyContent: "center",
-    marginBottom: 10,
   },
+
+  dobInput: {
+  height: 50,
+  borderWidth: 1,
+  borderColor: "#ccc",
+  borderRadius: 10,
+  paddingHorizontal: 15,
+  justifyContent: "center",   // 🔥 centers the DOB text vertically
+  marginBottom: 12,
+},
+
 
   inputError: {
     borderColor: "#ff4444",
-    borderWidth: 2,
   },
+
   errorText: {
     color: "#ff4444",
     fontSize: 12,
     marginBottom: 10,
-    fontWeight: "600",
   },
 
-  button: {
-    width: "100%",
-    height: 50,
-    backgroundColor: "#001F54",
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 10,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-
-  // PAN Styles
-  panContainer: { marginBottom: 15 },
-  panLabel: { fontSize: 14, fontWeight: "bold", color: "#555", marginBottom: 5 },
-  panInputField: {
-    width: "100%",
-    height: 50,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 10,
-    paddingHorizontal: 15,
-    fontSize: 16,
+  // PAN
+  panContainer: {
     marginBottom: 15,
   },
 
-  fetchButton: {
-    height: 50,
-    backgroundColor: "#001F54",
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-
-  methodLabel: {
+  panLabel: {
     fontSize: 14,
     color: "#555",
-    marginBottom: 10,
-    fontWeight: "600",
-  },
-  methodButtonsContainer: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 15,
-  },
-
-  methodButton: {
-    flex: 1,
-    height: 45,
-    borderWidth: 2,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f9f9f9",
-  },
-  methodButtonActive: {
-    borderColor: "#001F54",
-    backgroundColor: "#e3f2fd",
-  },
-  methodButtonText: {
-    fontSize: 14,
-    color: "#666",
-    fontWeight: "600",
-  },
-  methodButtonTextActive: {
-    color: "#001F54",
-  },
-
-  uploadArea: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderStyle: "dashed",
-    borderRadius: 10,
-    padding: 20,
-    alignItems: "center",
-    backgroundColor: "#f9f9f9",
-  },
-  uploadIcon: { fontSize: 30, color: "#777", marginBottom: 5 },
-  uploadText: { fontSize: 16, color: "#777" },
-
-  uploadedImageContainer: { alignItems: "center" },
-  uploadedImage: {
-    width: 100,
-    height: 60,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  uploadedText: { color: "#4CAF50", fontWeight: "600", fontSize: 14 },
-
-  verificationStatus: {
-    color: "#4CAF50",
-    fontWeight: "600",
-    fontSize: 14,
-    marginBottom: 10,
-  },
-
-  // Aadhar Styles
-  aadharContainer: { marginBottom: 15 },
-  aadharLabel: {
-    fontSize: 14,
     fontWeight: "bold",
-    color: "#555",
     marginBottom: 5,
   },
-  aadharInputField: {
-    width: "100%",
+
+  panInputField: {
     height: 50,
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 10,
     paddingHorizontal: 15,
     fontSize: 16,
+
+  },
+
+  // Aadhaar
+  aadharContainer: {
     marginBottom: 15,
   },
+
+  aadharLabel: {
+    fontSize: 14,
+    color: "#555",
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+
+  aadharInputField: {
+    height: 50,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    fontSize: 16,
+  },
+
   sendOtpButton: {
     height: 50,
     backgroundColor: "#001F54",
@@ -725,23 +522,27 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  sendOtpButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  verifiedButton: {
-    height: 50,
-    backgroundColor: "#4CAF50",
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  verifiedText: { color: "#fff", fontSize: 16, fontWeight: "600" },
 
-  // Bank
-  bankDetailsTitle: {
+  sendOtpButtonText: {
+    color: "#fff",
     fontSize: 16,
+    fontWeight: "600",
+  },
+
+  verificationStatus: {
+    color: "#4CAF50",
+    fontWeight: "700",
+    marginTop: 5,
+    marginBottom: 10,
+  },
+
+  // Bank Section
+  bankDetailsTitle: {
+    fontSize: 18,
     fontWeight: "700",
     color: "#001F54",
     marginTop: 20,
-    marginBottom: 15,
+    marginBottom: 10,
   },
 
   // Modal
@@ -750,37 +551,39 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
+
   modalContent: {
     backgroundColor: "#fff",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    minHeight: 320,
+    minHeight: 300,
   },
+
   modalTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "700",
+    textAlign: "center",
     marginBottom: 10,
-    textAlign: "center",
   },
+
   modalSubtitle: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 20,
     textAlign: "center",
+    color: "#777",
+    marginBottom: 15,
   },
+
   otpModalInput: {
-    width: "100%",
     height: 60,
     borderWidth: 1,
-    borderColor: "#ccc",
     borderRadius: 10,
-    paddingHorizontal: 15,
-    fontSize: 20,
-    marginBottom: 20,
+    borderColor: "#ccc",
     textAlign: "center",
-    letterSpacing: 5,
+    fontSize: 22,
+    marginBottom: 20,
+    letterSpacing: 6,
   },
+
   verifyButton: {
     height: 50,
     backgroundColor: "#001F54",
@@ -789,16 +592,39 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 15,
   },
+
   verifyButtonDisabled: {
     opacity: 0.5,
   },
-  verifyButtonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
-  closeModalText: {
-    color: "#001F54",
+
+  verifyButtonText: {
+    color: "#fff",
     fontSize: 16,
-    textAlign: "center",
-    marginBottom: 15,
     fontWeight: "600",
   },
-});
 
+  closeModalText: {
+    textAlign: "center",
+    color: "#001F54",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  button: {
+    height: 50,
+    backgroundColor: "#001F54",
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 15,
+  },
+
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+
+  buttonText: {
+    color: "#fff",
+    fontSize: 18,
+  },
+});

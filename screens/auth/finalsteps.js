@@ -4,10 +4,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableWithoutFeedback,
-  Keyboard,
   ScrollView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -48,7 +44,15 @@ export default function FinalSteps({ navigation }) {
     fetchSavedData();
   }, []);
 
-  if (!loanData) return <Text style={styles.loading}>Loading...</Text>;
+  if (!loanData) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          <Text style={styles.loading}>Loading...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   const canProceed =
     accountNo.length > 0 &&
@@ -59,94 +63,89 @@ export default function FinalSteps({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
-          <ScrollView
-            contentContainerStyle={styles.container}
-            keyboardShouldPersistTaps="handled"
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.title}>Final Steps to Funding</Text>
+
+        {/* STEP 1 - Loan Summary */}
+        <View style={styles.card}>
+          <Text style={styles.stepTitle}>1. Loan Summary</Text>
+          <Text style={styles.text}>Amount: ₹{loanData.amount}</Text>
+          <Text style={styles.text}>Tenure: {loanData.months} months</Text>
+          <Text style={styles.text}>Interest: {loanData.interestRate}%</Text>
+          <Text style={styles.text}>EMI: ₹{loanData.emi}</Text>
+        </View>
+
+        {/* STEP 2 - e-Mandate */}
+        <View style={styles.card}>
+          <Text style={styles.stepTitle}>2. Setup e-Mandate (Auto Pay)</Text>
+
+          {loadingBasicInfo ? (
+            <Text style={styles.text}>Loading account details...</Text>
+          ) : accountNo && bankName && ifsc ? (
+            <>
+              <Text style={styles.text}>Account No: {accountNo}</Text>
+              <Text style={styles.text}>Bank Name: {bankName}</Text>
+              <Text style={styles.text}>IFSC: {ifsc}</Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.text}>No account details found.</Text>
+              <Text style={styles.text}>
+                Please return to the Basic Info screen and save your bank
+                details.
+              </Text>
+            </>
+          )}
+        </View>
+
+        {/* STEP 3 - Agreement */}
+        <View style={styles.card}>
+          <Text style={styles.stepTitle}>3. Sign Digital Agreement</Text>
+
+          <TouchableOpacity
+            style={styles.checkboxRow}
+            onPress={() => setAgreementSigned(!agreementSigned)}
           >
-            <Text style={styles.title}>Final Steps to Funding</Text>
-
-            {/* STEP 1 - Loan Summary */}
-            <View style={styles.card}>
-              <Text style={styles.stepTitle}>1. Loan Summary</Text>
-              <Text style={styles.text}>Amount: ₹{loanData.amount}</Text>
-              <Text style={styles.text}>Tenure: {loanData.months} months</Text>
-              <Text style={styles.text}>Interest: {loanData.interestRate}%</Text>
-              <Text style={styles.text}>EMI: ₹{loanData.emi}</Text>
+            <View style={styles.checkbox}>
+              {agreementSigned && <Text style={styles.tick}>✓</Text>}
             </View>
+            <Text style={styles.checkText}>
+              I agree to the loan terms & policy
+            </Text>
+          </TouchableOpacity>
+        </View>
 
-            {/* STEP 2 - e-Mandate */}
-            <View style={styles.card}>
-              <Text style={styles.stepTitle}>2. Setup e-Mandate (Auto Pay)</Text>
+        {/* STEP 4 - Confirm Disbursal */}
+        <View style={styles.card}>
+          <Text style={styles.stepTitle}>4. Confirm Disbursal</Text>
 
-              {loadingBasicInfo ? (
-                <Text style={styles.text}>Loading account details...</Text>
-              ) : accountNo && bankName && ifsc ? (
-                <>
-                  <Text style={styles.text}>Account No: {accountNo}</Text>
-                  <Text style={styles.text}>Bank Name: {bankName}</Text>
-                  <Text style={styles.text}>IFSC: {ifsc}</Text>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.text}>No account details found.</Text>
-                  <Text style={styles.text}>
-                    Please return to the Basic Info screen and save your bank details.
-                  </Text>
-                </>
-              )}
+          <TouchableOpacity
+            style={styles.checkboxRow}
+            onPress={() => setDisbursalConfirmed(!disbursalConfirmed)}
+          >
+            <View style={styles.checkbox}>
+              {disbursalConfirmed && <Text style={styles.tick}>✓</Text>}
             </View>
+            <Text style={styles.checkText}>Confirm loan disbursal</Text>
+          </TouchableOpacity>
+        </View>
 
-            {/* STEP 3 - Agreement */}
-            <View style={styles.card}>
-              <Text style={styles.stepTitle}>3. Sign Digital Agreement</Text>
-
-              <TouchableOpacity
-                style={styles.checkboxRow}
-                onPress={() => setAgreementSigned(!agreementSigned)}
-              >
-                <View style={styles.checkbox}>
-                  {agreementSigned && <Text style={styles.tick}>✓</Text>}
-                </View>
-                <Text style={styles.checkText}>
-                  I agree to the loan terms & policy
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* STEP 4 - Confirm Disbursal */}
-            <View style={styles.card}>
-              <Text style={styles.stepTitle}>4. Confirm Disbursal</Text>
-
-              <TouchableOpacity
-                style={styles.checkboxRow}
-                onPress={() => setDisbursalConfirmed(!disbursalConfirmed)}
-              >
-                <View style={styles.checkbox}>
-                  {disbursalConfirmed && <Text style={styles.tick}>✓</Text>}
-                </View>
-                <Text style={styles.checkText}>Confirm loan disbursal</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* BUTTON */}
-            <TouchableOpacity
-              disabled={!canProceed}
-              style={[
-                styles.button,
-                { backgroundColor: canProceed ? "#001F54" : "#aaa" },
-              ]}
-              onPress={() => navigation.navigate("SuccessScreen")}
-            >
-              <Text style={styles.buttonText}>Complete Process</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+        {/* BUTTON */}
+        <TouchableOpacity
+          disabled={!canProceed}
+          style={[
+            styles.button,
+            { backgroundColor: canProceed ? "#001F54" : "#aaa" },
+          ]}
+          onPress={() => navigation.navigate("SuccessScreen")}
+        >
+          <Text style={styles.buttonText}>Complete Process</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -157,10 +156,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
+  scroll: {
+    flex: 1,
+  },
   container: {
-    flexGrow: 1,
     padding: 25,
-    paddingBottom: 80,
+    paddingBottom: 40, // enough space at bottom, but not too much
   },
   loading: {
     fontSize: 18,
@@ -215,6 +216,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     marginTop: 10,
+    marginBottom: 20,
   },
   buttonText: {
     color: "#fff",

@@ -15,7 +15,12 @@ import EmiCalculator from "./screens/auth/emicalculator";
 import FinalSteps from "./screens/auth/finalsteps";
 import SuccessScreen from "./screens/auth/sucessscreen";
 import ThankYou from "./screens/auth/thankyou";
-import Dashboard from "./screens/dashboard";
+import BottomTab from "./screens/components/bottomtab";
+import Home from "./screens/home";
+import Loans from "./screens/loans";
+import Help from "./screens/help";
+import Profile from "./screens/profile";
+
 
 const Stack = createStackNavigator();
 
@@ -98,8 +103,32 @@ export default function App() {
           />
 
           <Stack.Screen
-            name="Dashboard"
-            component={Dashboard}
+            name="bottomTabs"
+            component={BottomTab}
+            options={{ headerShown: false }}
+          />
+
+          <Stack.Screen
+            name="Home"
+            component={Home}
+            options={{ headerShown: false }}
+          />
+
+          <Stack.Screen
+            name="Loans"
+            component={Loans}
+            options={{ headerShown: false }}
+          />
+
+          <Stack.Screen
+            name="Help"
+            component={Help}
+            options={{ headerShown: false }}
+          />
+
+          <Stack.Screen
+            name="Profile"
+            component={Profile}
             options={{ headerShown: false }}
           />
 

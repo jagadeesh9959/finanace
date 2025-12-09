@@ -80,7 +80,7 @@ export default function Otp({ route, navigation }) {
         if (loanData) {
           navigation.reset({
             index: 0,
-            routes: [{ name: "Dashboard" }],
+            routes: [{ name: "bottomTabs" }],
           });
           return;
         }
