@@ -9,6 +9,8 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
@@ -16,9 +18,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function Profile({ navigation }) {
   const [userData, setUserData] = useState(null);
-  const [loanData, setLoanData] = useState(null);
+  const [activeTab, setActiveTab] = useState("profile");
   const [editMode, setEditMode] = useState(false);
-  const [activeTab, setActiveTab] = useState("info");
 
   const [editForm, setEditForm] = useState({
     fullName: "",
@@ -38,11 +39,9 @@ export default function Profile({ navigation }) {
 
   const loadUserData = async () => {
     try {
-      const basicInfo = await AsyncStorage.getItem("@BasicInfoData");
-      const loan = await AsyncStorage.getItem("loanDetails");
-
-      if (basicInfo) {
-        const parsed = JSON.parse(basicInfo);
+      const data = await AsyncStorage.getItem("@BasicInfoData");
+      if (data) {
+        const parsed = JSON.parse(data);
         setUserData(parsed);
         setEditForm({
           fullName: parsed.fullName || "",
@@ -56,469 +55,352 @@ export default function Profile({ navigation }) {
           pincode: parsed.pincode || "",
         });
       }
-      if (loan) {
-        setLoanData(JSON.parse(loan));
-      }
-    } catch (error) {
-      console.log("Error loading user data:", error);
+    } catch (e) {
+      console.log("Error loading profile:", e);
     }
   };
 
   const handleEditSave = async () => {
     if (!editForm.fullName || !editForm.email || !editForm.mobile) {
-      Alert.alert("Error", "Please fill in all required fields");
-      return;
+      return Alert.alert("Error", "Full Name, Email & Mobile are required.");
     }
 
     try {
-      const updatedData = { ...userData, ...editForm };
-      await AsyncStorage.setItem("@BasicInfoData", JSON.stringify(updatedData));
-      setUserData(updatedData);
+      const updated = { ...userData, ...editForm };
+      await AsyncStorage.setItem("@BasicInfoData", JSON.stringify(updated));
+      setUserData(updated);
       setEditMode(false);
-      Alert.alert("Success", "Profile updated successfully");
-    } catch (error) {
-      Alert.alert("Error", "Failed to save profile");
+      Alert.alert("Success", "Profile updated successfully!");
+    } catch (err) {
+      Alert.alert("Error", "Unable to update profile.");
     }
   };
 
   const handleLogout = () => {
-    Alert.alert("Logout", "Are you sure you want to logout?", [
+    Alert.alert("Logout", "Are you sure?", [
       { text: "Cancel" },
       {
         text: "Logout",
         onPress: () =>
-          navigation.reset({
-            index: 0,
-            routes: [{ name: "login" }],
-          }),
+          navigation.reset({ index: 0, routes: [{ name: "login" }] }),
       },
     ]);
   };
 
-  const handleDownloadStatement = () => {
-    Alert.alert("Download", "Loan statement will be sent to your email");
-  };
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{ flex: 1 }}
-      >
-        {/* NEW HOME-STYLE HEADER */}
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.greeting}>My Profile</Text>
-            <Text style={styles.username}>
-              {userData?.fullName?.split(" ")[0] || "User"} 👋
-            </Text>
-          </View>
-
-          {/* Logout */}
-          <TouchableOpacity onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={28} color="#001F3F" />
-          </TouchableOpacity>
-        </View>
-
-        {/* PROFILE CARD */}
-        <View style={styles.profileCard}>
-          <View style={styles.avatarSection}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {userData?.fullName?.charAt(0).toUpperCase() || "U"}
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={{ flex: 1 }}>
+          {/* HEADER */}
+          <View style={styles.headerRow}>
+            <View>
+              <Text style={styles.greeting}>My Profile</Text>
+              <Text style={styles.username}>
+                {userData?.fullName?.split(" ")[0] || "User"} 👋
               </Text>
             </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{userData?.fullName || "User"}</Text>
-              <Text style={styles.profileEmail}>{userData?.email}</Text>
-              <Text style={styles.profileMobile}>{userData?.mobile}</Text>
-            </View>
-          </View>
 
-          {!editMode && (
-            <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => setEditMode(true)}
-            >
-              <MaterialIcons name="edit" size={18} color="#fff" />
-              <Text style={styles.editButtonText}>Edit Profile</Text>
+            <TouchableOpacity onPress={handleLogout}>
+              <Ionicons name="log-out-outline" size={28} color="#001F3F" />
             </TouchableOpacity>
-          )}
-        </View>
+          </View>
 
-        {/* TABS */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "info" && styles.activeTab]}
-            onPress={() => setActiveTab("info")}
-          >
-            <Text style={[styles.tabText, activeTab === "info" && styles.activeTabText]}>
-              Personal Info
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "kyc" && styles.activeTab]}
-            onPress={() => setActiveTab("kyc")}
-          >
-            <Text style={[styles.tabText, activeTab === "kyc" && styles.activeTabText]}>
-              KYC Status
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tab, activeTab === "settings" && styles.activeTab]}
-            onPress={() => setActiveTab("settings")}
-          >
-            <Text
-              style={[styles.tabText, activeTab === "settings" && styles.activeTabText]}
-            >
-              Settings
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* PERSONAL INFO TAB */}
-          {activeTab === "info" && (
-            <View style={styles.infoContainer}>
-              {editMode ? (
-                <>
-                  <Text style={styles.sectionTitle}>Edit Personal Information</Text>
-
-                  {[
-                    { key: "fullName", label: "Full Name *" },
-                    { key: "email", label: "Email *", keyboard: "email-address" },
-                    { key: "mobile", label: "Mobile *", keyboard: "phone-pad", max: 10 },
-                    { key: "dob", label: "Date of Birth", placeholder: "DD/MM/YYYY" },
-                    { key: "address", label: "Street Address" },
-                    { key: "city", label: "City" },
-                    { key: "state", label: "State" },
-                    { key: "pincode", label: "Pincode", keyboard: "numeric", max: 6 },
-                  ].map((field) => (
-                    <View key={field.key} style={styles.formGroup}>
-                      <Text style={styles.label}>{field.label}</Text>
-                      <TextInput
-                        style={styles.input}
-                        placeholder={field.placeholder || field.label}
-                        value={editForm[field.key]}
-                        keyboardType={field.keyboard}
-                        maxLength={field.max}
-                        onChangeText={(t) =>
-                          setEditForm({ ...editForm, [field.key]: t })
-                        }
-                      />
-                    </View>
-                  ))}
-
-                  {/* PAN - Non editable */}
-                  <View style={styles.formGroup}>
-                    <Text style={styles.label}>PAN Number</Text>
-                    <TextInput
-                      style={[styles.input, { backgroundColor: "#eee" }]}
-                      editable={false}
-                      value={editForm.pan}
-                    />
-                    <Text style={styles.helperText}>PAN cannot be changed</Text>
-                  </View>
-
-                  {/* Save + Cancel */}
-                  <View style={styles.buttonGroup}>
-                    <TouchableOpacity
-                      style={styles.saveButton}
-                      onPress={handleEditSave}
-                    >
-                      <Text style={styles.saveButtonText}>Save Changes</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={styles.cancelButton}
-                      onPress={() => setEditMode(false)}
-                    >
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.sectionTitle}>Personal Information</Text>
-
-                  {[
-                    { label: "Full Name", icon: "person", value: userData?.fullName },
-                    { label: "Email", icon: "email", value: userData?.email },
-                    { label: "Mobile", icon: "phone", value: userData?.mobile },
-                    { label: "PAN", icon: "credit-card", value: userData?.pan },
-                    { label: "DOB", icon: "calendar-today", value: userData?.dob },
-                  ].map((item, idx) => (
-                    <View key={idx} style={styles.infoCard}>
-                      <View style={styles.infoRow}>
-                        <View style={styles.infoLeft}>
-                          <MaterialIcons
-                            name={item.icon}
-                            size={24}
-                            color="#D4AF37"
-                          />
-                          <Text style={styles.infoLabel}>{item.label}</Text>
-                        </View>
-                        <Text style={styles.infoValue}>{item.value || "N/A"}</Text>
-                      </View>
-                    </View>
-                  ))}
-
-                  {/* Address */}
-                  <Text style={styles.sectionTitle}>Address Details</Text>
-
-                  {[
-                    { label: "Street Address", icon: "home", value: userData?.address },
-                    { label: "City", icon: "location-city", value: userData?.city },
-                    { label: "State", icon: "map", value: userData?.state },
-                    { label: "Pincode", icon: "local-post-office", value: userData?.pincode },
-                  ].map((item, idx) => (
-                    <View key={idx} style={styles.infoCard}>
-                      <View style={styles.infoRow}>
-                        <View style={styles.infoLeft}>
-                          <MaterialIcons name={item.icon} size={24} color="#D4AF37" />
-                          <Text style={styles.infoLabel}>{item.label}</Text>
-                        </View>
-                        <Text style={styles.infoValue}>{item.value || "N/A"}</Text>
-                      </View>
-                    </View>
-                  ))}
-                </>
-              )}
-            </View>
-          )}
-
-          {/* KYC STATUS TAB */}
-          {activeTab === "kyc" && (
-            <View style={styles.kycContainer}>
-              <Text style={styles.sectionTitle}>KYC Verification Status</Text>
-
-              {[
-                {
-                  label: "PAN Verification",
-                  icon: "assignment-ind",
-                  value: userData?.pan,
-                  verified: userData?.panVerified,
-                },
-                {
-                  label: "Aadhaar Verification",
-                  icon: "perm-identity",
-                  value: "Biometric verification",
-                  verified: userData?.aadharVerified,
-                },
-                {
-                  label: "Bank Verification",
-                  icon: "account-balance",
-                  value: "Account linked & verified",
-                  verified: userData?.bankVerified,
-                },
-              ].map((item, idx) => (
-                <View key={idx} style={styles.kycCard}>
-                  <View style={styles.kycRow}>
-                    <View style={styles.kycLeft}>
-                      <MaterialIcons
-                        name={item.icon}
-                        size={28}
-                        color={item.verified ? "#28A745" : "#FFC107"}
-                      />
-                      <View style={styles.kycInfo}>
-                        <Text style={styles.kycName}>{item.label}</Text>
-                        <Text style={styles.kycDoc}>{item.value}</Text>
-                      </View>
-                    </View>
-
-                    <View
-                      style={[
-                        styles.kycStatus,
-                        {
-                          backgroundColor: item.verified
-                            ? "#D4EDDA"
-                            : "#FFF3CD",
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          styles.kycStatusText,
-                          {
-                            color: item.verified ? "#155724" : "#856404",
-                          },
-                        ]}
-                      >
-                        {item.verified ? "✓ Verified" : "⏳ Pending"}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-              ))}
-
-              {loanData && (
-                <>
-                  <Text style={[styles.sectionTitle, { marginTop: 30 }]}>
-                    Loan Information
-                  </Text>
-
-                  <View style={styles.loanInfoCard}>
-                    <View style={styles.loanInfoRow}>
-                      <Text style={styles.loanInfoLabel}>Loan Amount</Text>
-                      <Text style={styles.loanInfoValue}>
-                        ₹{loanData.amount?.toLocaleString()}
-                      </Text>
-                    </View>
-
-                    <View style={styles.loanInfoRow}>
-                      <Text style={styles.loanInfoLabel}>Monthly EMI</Text>
-                      <Text style={styles.loanInfoValue}>
-                        ₹{loanData.emi}
-                      </Text>
-                    </View>
-
-                    <View style={styles.loanInfoRow}>
-                      <Text style={styles.loanInfoLabel}>Tenure</Text>
-                      <Text style={styles.loanInfoValue}>
-                        {loanData.months} months
-                      </Text>
-                    </View>
-
-                    <View style={styles.loanInfoRow}>
-                      <Text style={styles.loanInfoLabel}>Interest Rate</Text>
-                      <Text style={styles.loanInfoValue}>
-                        {loanData.interestRate}% p.a.
-                      </Text>
-                    </View>
-
-                    <TouchableOpacity style={styles.downloadButton}>
-                      <MaterialIcons name="download" size={20} color="#fff" />
-                      <Text style={styles.downloadButtonText}>
-                        Download Statement
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </>
-              )}
-            </View>
-          )}
-
-          {/* SETTINGS TAB */}
-          {activeTab === "settings" && (
-            <View style={styles.settingsContainer}>
-              <Text style={styles.sectionTitle}>Account Settings</Text>
-
-              {[
-                {
-                  label: "Notifications",
-                  desc: "Manage notification preferences",
-                  icon: "notifications",
-                  toggle: true,
-                },
-                {
-                  label: "Language",
-                  desc: "English (US)",
-                  icon: "language",
-                },
-                {
-                  label: "Two-Factor Authentication",
-                  desc: "Enable for extra security",
-                  icon: "security",
-                  toggle: false,
-                },
-              ].map((item, idx) => (
-                <TouchableOpacity key={idx} style={styles.settingItem}>
-                  <View style={styles.settingLeft}>
-                    <MaterialIcons name={item.icon} size={24} color="#D4AF37" />
-                    <View style={styles.settingInfo}>
-                      <Text style={styles.settingTitle}>{item.label}</Text>
-                      <Text style={styles.settingDesc}>{item.desc}</Text>
-                    </View>
-                  </View>
-
-                  {item.toggle ? (
-                    <MaterialIcons name="toggle-on" size={24} color="#28A745" />
-                  ) : (
-                    <MaterialIcons name="arrow-forward-ios" size={16} color="#999" />
-                  )}
-                </TouchableOpacity>
-              ))}
-
-              <Text style={[styles.sectionTitle, { marginTop: 30 }]}>
-                Other Options
-              </Text>
-
-              <TouchableOpacity
-                style={styles.settingItem}
-                onPress={handleDownloadStatement}
-              >
-                <View style={styles.settingLeft}>
-                  <MaterialIcons name="description" size={24} color="#D4AF37" />
-                  <View style={styles.settingInfo}>
-                    <Text style={styles.settingTitle}>Download Documents</Text>
-                    <Text style={styles.settingDesc}>
-                      Loan statements & agreements
-                    </Text>
-                  </View>
-                </View>
-                <MaterialIcons name="arrow-forward-ios" size={16} color="#999" />
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.settingItem}>
-                <View style={styles.settingLeft}>
-                  <MaterialIcons name="help" size={24} color="#D4AF37" />
-                  <View style={styles.settingInfo}>
-                    <Text style={styles.settingTitle}>Help & Support</Text>
-                    <Text style={styles.settingDesc}>
-                      FAQs and contact support
-                    </Text>
-                  </View>
-                </View>
-                <MaterialIcons name="arrow-forward-ios" size={16} color="#999" />
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.settingItem}>
-                <View style={styles.settingLeft}>
-                  <MaterialIcons name="info" size={24} color="#D4AF37" />
-                  <View style={styles.settingInfo}>
-                    <Text style={styles.settingTitle}>About App</Text>
-                    <Text style={styles.settingDesc}>Version 1.0.0</Text>
-                  </View>
-                </View>
-                <MaterialIcons name="arrow-forward-ios" size={16} color="#999" />
-              </TouchableOpacity>
-
-              {/* LOGOUT */}
-              <TouchableOpacity
-                style={[styles.settingItem, styles.logoutItem]}
-                onPress={handleLogout}
-              >
-                <View style={styles.settingLeft}>
-                  <MaterialIcons name="logout" size={24} color="#DC3545" />
-                  <View style={styles.settingInfo}>
-                    <Text style={[styles.settingTitle, { color: "#DC3545" }]}>
-                      Logout
-                    </Text>
-                    <Text style={styles.settingDesc}>
-                      Sign out from your account
-                    </Text>
-                  </View>
-                </View>
-                <MaterialIcons name="arrow-forward-ios" size={16} color="#DC3545" />
-              </TouchableOpacity>
-
-              <View style={styles.footer}>
-                <Text style={styles.footerText}>© 2024 InstaLoan Pro</Text>
-                <Text style={styles.footerText}>
-                  Privacy Policy • Terms & Conditions
+          {/* PROFILE CARD */}
+          <View style={styles.profileCard}>
+            <View style={styles.avatarSection}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>
+                  {userData?.fullName?.charAt(0)?.toUpperCase() || "U"}
                 </Text>
               </View>
+
+              <View>
+                <Text style={styles.profileName}>{userData?.fullName}</Text>
+                <Text style={styles.profileEmail}>{userData?.email}</Text>
+                <Text style={styles.profileMobile}>{userData?.mobile}</Text>
+              </View>
             </View>
-          )}
-        </ScrollView>
-      </KeyboardAvoidingView>
+
+            {!editMode && (
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => setEditMode(true)}
+              >
+                <MaterialIcons name="edit" size={18} color="#fff" />
+                <Text style={styles.editButtonText}>Edit Profile</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* TABS */}
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === "profile" && styles.activeTab]}
+              onPress={() => setActiveTab("profile")}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "profile" && styles.activeTabText,
+                ]}
+              >
+                Profile Details
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tab, activeTab === "settings" && styles.activeTab]}
+              onPress={() => setActiveTab("settings")}
+            >
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === "settings" && styles.activeTabText,
+                ]}
+              >
+                Settings
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* FIXED CONTENT AREA */}
+          <View style={{ flex: 1 }}>
+            <ScrollView
+              style={styles.content}
+              contentContainerStyle={{ paddingBottom: 80 }}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* ================= PROFILE TAB ================= */}
+              <View
+                style={{
+                  display: activeTab === "profile" ? "flex" : "none",
+                }}
+              >
+                {editMode ? (
+                  <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : undefined}
+                  >
+                    <Text style={styles.sectionTitle}>Edit Information</Text>
+
+                    {[
+                      { key: "fullName", label: "Full Name *" },
+                      { key: "email", label: "Email *", keyboard: "email-address" },
+                      { key: "mobile", label: "Mobile *", keyboard: "phone-pad" },
+                      { key: "dob", label: "Date of Birth" },
+                      { key: "address", label: "Address" },
+                      { key: "city", label: "City" },
+                      { key: "state", label: "State" },
+                      { key: "pincode", label: "Pincode", keyboard: "numeric" },
+                    ].map((item) => (
+                      <View key={item.key} style={styles.formGroup}>
+                        <Text style={styles.label}>{item.label}</Text>
+                        <TextInput
+                          style={styles.input}
+                          value={editForm[item.key]}
+                          keyboardType={item.keyboard}
+                          onChangeText={(t) =>
+                            setEditForm({ ...editForm, [item.key]: t })
+                          }
+                        />
+                      </View>
+                    ))}
+
+                    {/* PAN NON EDITABLE */}
+                    <View style={styles.formGroup}>
+                      <Text style={styles.label}>PAN Number</Text>
+                      <TextInput
+                        style={[styles.input, { backgroundColor: "#eee" }]}
+                        editable={false}
+                        value={editForm.pan}
+                      />
+                    </View>
+
+                    <View style={styles.buttonGroup}>
+                      <TouchableOpacity
+                        style={styles.saveButton}
+                        onPress={handleEditSave}
+                      >
+                        <Text style={styles.saveButtonText}>Save</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.cancelButton}
+                        onPress={() => setEditMode(false)}
+                      >
+                        <Text style={styles.cancelButtonText}>Cancel</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </KeyboardAvoidingView>
+                ) : (
+                  <>
+                    {/* DISPLAY CARD STYLE */}
+                    <Text style={styles.sectionTitle}>Personal Information</Text>
+
+                    <View style={styles.formDisplayCard}>
+                      <Text style={styles.displayLabel}>Full Name</Text>
+                      <Text style={styles.displayValue}>
+                        {userData?.fullName}
+                      </Text>
+
+                      <Text style={styles.displayLabel}>Email</Text>
+                      <Text style={styles.displayValue}>{userData?.email}</Text>
+
+                      <Text style={styles.displayLabel}>Mobile</Text>
+                      <Text style={styles.displayValue}>{userData?.mobile}</Text>
+
+                      <Text style={styles.displayLabel}>PAN</Text>
+                      <Text style={styles.displayValue}>{userData?.pan}</Text>
+
+                      <Text style={styles.displayLabel}>DOB</Text>
+                      <Text style={styles.displayValue}>{userData?.dob}</Text>
+                    </View>
+
+                    <Text style={styles.sectionTitle}>Address Details</Text>
+                    <View style={styles.formDisplayCard}>
+                      <Text style={styles.displayLabel}>Address</Text>
+                      <Text style={styles.displayValue}>
+                        {userData?.address}
+                      </Text>
+
+                      <Text style={styles.displayLabel}>City</Text>
+                      <Text style={styles.displayValue}>{userData?.city}</Text>
+
+                      <Text style={styles.displayLabel}>State</Text>
+                      <Text style={styles.displayValue}>{userData?.state}</Text>
+
+                      <Text style={styles.displayLabel}>Pincode</Text>
+                      <Text style={styles.displayValue}>
+                        {userData?.pincode}
+                      </Text>
+                    </View>
+
+                    {/* KYC */}
+                    <Text style={styles.sectionTitle}>KYC Verification</Text>
+                    {[
+                      {
+                        label: "PAN Verification",
+                        icon: "assignment-ind",
+                        verified: userData?.panVerified,
+                      },
+                      {
+                        label: "Aadhaar Verification",
+                        icon: "perm-identity",
+                        verified: userData?.aadharVerified,
+                      },
+                      {
+                        label: "Bank Verification",
+                        icon: "account-balance",
+                        verified: userData?.bankVerified,
+                      },
+                    ].map((item, index) => (
+                      <View key={index} style={styles.kycCard}>
+                        <View style={styles.kycRow}>
+                          <View style={styles.kycLeft}>
+                            <MaterialIcons
+                              name={item.icon}
+                              size={28}
+                              color={item.verified ? "#28A745" : "#FFC107"}
+                            />
+                            <View style={styles.kycInfo}>
+                              <Text style={styles.kycName}>{item.label}</Text>
+                              <Text style={styles.kycDoc}>
+                                {item.verified
+                                  ? "Verified Successfully"
+                                  : "Verification Pending"}
+                              </Text>
+                            </View>
+                          </View>
+
+                          <View
+                            style={[
+                              styles.kycStatus,
+                              {
+                                backgroundColor: item.verified
+                                  ? "#D4EDDA"
+                                  : "#FFF3CD",
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={{
+                                color: item.verified ? "#155724" : "#856404",
+                                fontWeight: "700",
+                              }}
+                            >
+                              {item.verified ? "✓ Verified" : "⏳ Pending"}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    ))}
+                  </>
+                )}
+              </View>
+
+              {/* ================= SETTINGS TAB ================= */}
+              <View
+                style={{
+                  display: activeTab === "settings" ? "flex" : "none",
+                }}
+              >
+                <Text style={styles.sectionTitle}>Settings</Text>
+
+                <TouchableOpacity style={styles.settingItem}>
+                  <View style={styles.settingLeft}>
+                    <MaterialIcons name="language" size={24} color="#D4AF37" />
+                    <Text style={styles.settingText}>Language</Text>
+                  </View>
+                  <MaterialIcons name="arrow-forward-ios" size={16} color="#999" />
+                </TouchableOpacity>
+
+                {/* INFO SECTION */}
+                <View style={styles.infoSection}>
+                  <View style={styles.infoCard}>
+                    <MaterialIcons name="schedule" size={32} color="#D4AF37" />
+                    <Text style={styles.infoTitle}>Business Hours</Text>
+                    <Text style={styles.infoText}>Mon–Fri: 9 AM – 9 PM</Text>
+                    <Text style={styles.infoText}>Sat–Sun: 10 AM – 8 PM</Text>
+                  </View>
+
+                  <View style={styles.infoCard}>
+                    <MaterialIcons name="security" size={32} color="#D4AF37" />
+                    <Text style={styles.infoTitle}>Secure & Encrypted</Text>
+                    <Text style={styles.infoText}>
+                      Your data is fully protected & private.
+                    </Text>
+                  </View>
+                </View>
+
+                {/* LOGOUT */}
+                <TouchableOpacity
+                  style={[styles.settingItem, styles.logoutItem]}
+                  onPress={handleLogout}
+                >
+                  <View style={styles.settingLeft}>
+                    <MaterialIcons name="logout" size={24} color="#DC3545" />
+                    <Text style={[styles.settingText, { color: "#DC3545" }]}>
+                      Logout
+                    </Text>
+                  </View>
+                  <MaterialIcons name="arrow-forward-ios" size={16} color="#DC3545" />
+                </TouchableOpacity>
+
+                {/* FOOTER */}
+                <View style={styles.footer}>
+                  <Text style={styles.footerText}>Version 1.0.0</Text>
+                  <Text style={styles.footerText}>© 2024 InstaLoan Pro</Text>
+                </View>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 }
 
-/* ------------ Styles ------------ */
+/* ======================= STYLES ======================= */
 const styles = StyleSheet.create({
   headerRow: {
     marginTop: 10,
@@ -530,29 +412,17 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
-  greeting: {
-    fontSize: 14,
-    color: "#6C757D",
-  },
-  username: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#001F3F",
-  },
+  greeting: { fontSize: 14, color: "#6C757D" },
+  username: { fontSize: 24, fontWeight: "700", color: "#001F3F" },
 
-  /* PROFILE CARD */
   profileCard: {
     backgroundColor: "#001F54",
     padding: 20,
     margin: 15,
     borderRadius: 12,
-    marginBottom: 20,
+    marginBottom: 10,
   },
-  avatarSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 15,
-  },
+  avatarSection: { flexDirection: "row", alignItems: "center", marginBottom: 15 },
   avatar: {
     width: 70,
     height: 70,
@@ -562,29 +432,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 15,
   },
-  avatarText: {
-    fontSize: 32,
-    fontWeight: "700",
-    color: "#001F54",
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#fff",
-  },
-  profileEmail: {
-    fontSize: 12,
-    color: "#D4AF37",
-    marginTop: 4,
-  },
-  profileMobile: {
-    fontSize: 12,
-    color: "#ccc",
-    marginTop: 2,
-  },
+  avatarText: { fontSize: 32, fontWeight: "700", color: "#001F54" },
+  profileName: { fontSize: 18, fontWeight: "700", color: "#fff" },
+  profileEmail: { fontSize: 12, color: "#D4AF37", marginTop: 4 },
+  profileMobile: { fontSize: 12, color: "#ccc", marginTop: 2 },
+
   editButton: {
     flexDirection: "row",
     backgroundColor: "#D4AF37",
@@ -596,87 +448,51 @@ const styles = StyleSheet.create({
   },
   editButtonText: {
     color: "#001F54",
-    fontWeight: "600",
+    fontWeight: "700",
     marginLeft: 8,
   },
 
-  /* TABS */
   tabContainer: {
     flexDirection: "row",
     backgroundColor: "#f9f9f9",
     borderBottomWidth: 1,
     borderBottomColor: "#eee",
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 12,
-    alignItems: "center",
-    borderBottomWidth: 2,
-    borderBottomColor: "transparent",
-  },
-  activeTab: {
-    borderBottomColor: "#D4AF37",
-  },
-  tabText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#999",
-  },
-  activeTabText: {
-    color: "#001F54",
-  },
+  tab: { flex: 1, paddingVertical: 12, alignItems: "center" },
+  activeTab: { borderBottomWidth: 3, borderBottomColor: "#D4AF37" },
+  tabText: { fontSize: 14, fontWeight: "600", color: "#666" },
+  activeTabText: { color: "#001F54" },
 
-  /* CONTENT */
-  content: {
-    paddingHorizontal: 15,
-  },
+  content: { flex: 1, paddingHorizontal: 15 },
+
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: "700",
     color: "#001F54",
     marginBottom: 15,
     marginTop: 20,
   },
 
-  infoCard: {
-    backgroundColor: "#f9f9f9",
+  formDisplayCard: {
+    backgroundColor: "#fff",
+    borderWidth: 1,
+    borderColor: "#ddd",
     borderRadius: 10,
     padding: 15,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: "#D4AF37",
-  },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  infoLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  infoLabel: {
-    fontSize: 12,
-    color: "#666",
-    marginLeft: 12,
-    fontWeight: "500",
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#001F54",
-  },
-
-  formGroup: {
     marginBottom: 20,
   },
-  label: {
-    fontSize: 14,
-    fontWeight: "600",
+  displayLabel: { fontSize: 13, color: "#555", marginTop: 10, fontWeight: "600" },
+  displayValue: {
+    fontSize: 15,
     color: "#001F54",
-    marginBottom: 8,
+    marginTop: 3,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eee",
+    paddingBottom: 6,
   },
+
+  formGroup: { marginBottom: 15 },
+  label: { fontSize: 14, fontWeight: "600", color: "#001F54", marginBottom: 6 },
   input: {
     backgroundColor: "#f9f9f9",
     borderWidth: 1,
@@ -685,161 +501,80 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
-    color: "#333",
   },
-  helperText: {
-    fontSize: 11,
-    color: "#999",
-    marginTop: 4,
-  },
-  buttonGroup: {
-    flexDirection: "row",
-    marginTop: 20,
-    marginBottom: 30,
-  },
+  buttonGroup: { flexDirection: "row", marginTop: 20, marginBottom: 20 },
   saveButton: {
     flex: 1,
     backgroundColor: "#001F54",
-    borderRadius: 8,
     paddingVertical: 12,
+    borderRadius: 8,
     marginRight: 10,
   },
   saveButtonText: {
     color: "#fff",
+    fontWeight: "700",
     textAlign: "center",
-    fontWeight: "600",
   },
   cancelButton: {
     flex: 1,
-    backgroundColor: "#f0f0f0",
-    borderRadius: 8,
+    backgroundColor: "#ddd",
     paddingVertical: 12,
+    borderRadius: 8,
   },
   cancelButtonText: {
-    color: "#666",
-    textAlign: "center",
-    fontWeight: "600",
-  },
-
-  /* KYC */
-  kycContainer: {
-    paddingVertical: 10,
-  },
-  kycCard: {
-    backgroundColor: "#f9f9f9",
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 12,
-    borderLeftWidth: 4,
-    borderLeftColor: "#D4AF37",
-  },
-  kycRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  kycLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  kycInfo: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  kycName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#001F54",
-  },
-  kycDoc: {
-    fontSize: 12,
-    color: "#666",
-    marginTop: 4,
-  },
-  kycStatus: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  kycStatusText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-
-  loanInfoCard: {
-    backgroundColor: "#f9f9f9",
-    borderRadius: 10,
-    padding: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: "#D4AF37",
-  },
-  loanInfoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 15,
-  },
-  loanInfoLabel: {
-    fontSize: 14,
-    color: "#666",
-  },
-  loanInfoValue: {
-    fontSize: 16,
+    color: "#333",
     fontWeight: "700",
-    color: "#001F54",
-  },
-  downloadButton: {
-    backgroundColor: "#001F54",
-    borderRadius: 8,
-    paddingVertical: 12,
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 15,
-  },
-  downloadButtonText: {
-    color: "#fff",
-    marginLeft: 8,
-    fontWeight: "600",
+    textAlign: "center",
   },
 
-  settingsContainer: {
-    paddingVertical: 10,
+  kycCard: {
+    backgroundColor: "#fff",
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#ddd",
   },
+  kycRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  kycLeft: { flexDirection: "row", alignItems: "center" },
+  kycInfo: { marginLeft: 12 },
+  kycName: { fontSize: 14, fontWeight: "700", color: "#001F54" },
+  kycDoc: { fontSize: 12, color: "#555" },
+  kycStatus: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
+
   settingItem: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     backgroundColor: "#f9f9f9",
-    borderRadius: 10,
     padding: 15,
+    borderRadius: 10,
     marginBottom: 12,
     borderLeftWidth: 4,
     borderLeftColor: "#D4AF37",
   },
-  settingLeft: {
-    flexDirection: "row",
+  settingLeft: { flexDirection: "row", alignItems: "center" },
+  settingText: { marginLeft: 15, fontSize: 15, fontWeight: "600", color: "#001F54" },
+  logoutItem: { borderLeftColor: "#DC3545" },
+
+  infoSection: { paddingVertical: 20 },
+  infoCard: {
+    backgroundColor: "#f0f4f8",
+    borderRadius: 10,
+    padding: 20,
+    marginBottom: 15,
+    borderLeftWidth: 4,
+    borderLeftColor: "#D4AF37",
     alignItems: "center",
-    flex: 1,
   },
-  settingInfo: { marginLeft: 15, flex: 1 },
-  settingTitle: { fontSize: 14, fontWeight: "600", color: "#001F54" },
-  settingDesc: { fontSize: 12, color: "#666", marginTop: 4 },
-  logoutItem: {
-    marginTop: 20,
-    borderLeftColor: "#DC3545",
-  },
+  infoTitle: { fontSize: 14, fontWeight: "700", marginTop: 10, color: "#001F54" },
+  infoText: { fontSize: 12, color: "#666", marginTop: 5, textAlign: "center" },
 
   footer: {
     alignItems: "center",
-    paddingVertical: 30,
+    paddingVertical: 20,
     borderTopWidth: 1,
     borderTopColor: "#eee",
     marginTop: 20,
   },
-  footerText: {
-    fontSize: 12,
-    color: "#999",
-    marginVertical: 3,
-  },
+  footerText: { fontSize: 12, color: "#999" },
 });
