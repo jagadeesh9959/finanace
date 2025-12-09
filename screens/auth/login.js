@@ -1,12 +1,26 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Login({ navigation }) {
   const [mobile, setMobile] = useState("");
 
+  const handleContinue = async () => {
+    try {
+      // Always go to OTP for verification
+      navigation.navigate("Otp", { mobile });
+
+    } catch (error) {
+      console.log("Error checking user login:", error);
+      Alert.alert("Error", "Something went wrong.");
+    }
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>InstaLoan <Text style={{color: "#D4AF37"}}>Pro</Text></Text>
+      <Text style={styles.title}>
+        InstaLoan <Text style={{ color: "#D4AF37" }}>Pro</Text>
+      </Text>
       <Text style={styles.subtitle}>Secure Loans in Minutes</Text>
 
       <TextInput
@@ -21,7 +35,7 @@ export default function Login({ navigation }) {
       <TouchableOpacity
         style={[styles.button, { opacity: mobile.length === 10 ? 1 : 0.5 }]}
         disabled={mobile.length !== 10}
-        onPress={() => navigation.navigate("Otp", { mobile })}
+        onPress={handleContinue}
       >
         <Text style={styles.buttonText}>Continue</Text>
       </TouchableOpacity>
@@ -43,16 +57,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 30,
   },
-  title: {
-    fontSize: 30,
-    fontWeight: "700",
-  },
-  subtitle: {
-    marginTop: 4,
-    fontSize: 14,
-    color: "#6c6c6c",
-    marginBottom: 40,
-  },
+  title: { fontSize: 30, fontWeight: "700" },
+  subtitle: { marginTop: 4, fontSize: 14, color: "#6c6c6c", marginBottom: 40 },
   input: {
     width: "100%",
     height: 50,
@@ -72,19 +78,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 10,
   },
-  buttonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  terms: {
-    marginTop: 20,
-    fontSize: 12,
-    color: "#555",
-    textAlign: "center",
-  },
-  link: {
-    color: "#001F54",
-    fontWeight: "600",
-  },
+  buttonText: { color: "#fff", fontSize: 18, fontWeight: "600" },
+  terms: { marginTop: 20, fontSize: 12, color: "#555", textAlign: "center" },
+  link: { color: "#001F54", fontWeight: "600" },
 });

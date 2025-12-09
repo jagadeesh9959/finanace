@@ -1,49 +1,99 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 import Slider from "@react-native-community/slider";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";   // ⭐ Logout icon
 
 export default function Dashboard({ navigation }) {
   const [emiAmount, setEmiAmount] = useState(5000);
+  const [user, setUser] = useState(null);
+  const [loan, setLoan] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const userData = await AsyncStorage.getItem("@BasicInfoData");
+        const loanData = await AsyncStorage.getItem("loanDetails");
+
+        if (userData) setUser(JSON.parse(userData));
+        if (loanData) {
+          const parsedLoan = JSON.parse(loanData);
+          setLoan(parsedLoan);
+          setEmiAmount(parsedLoan.emi);
+        }
+      } catch (error) {
+        console.log("Error loading dashboard data:", error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // ⭐ LOGOUT function
+  const handleLogout = async () => {
+    // await AsyncStorage.clear();
+
+    navigation.reset({
+      index: 0,
+      routes: [{ name: "login" }],
+    });
+  };
 
   return (
     <ScrollView style={styles.container}>
       
-      {/* Header */}
-      <View style={styles.header}>
+      {/* HEADER WITH LOGOUT */}
+      <View style={styles.headerRow}>
         <View>
           <Text style={styles.greeting}>Welcome back,</Text>
-          <Text style={styles.username}>Vasanth 👋</Text>
+          <Text style={styles.username}>
+            {user?.fullName ? user.fullName.split(" ")[0] : "User"} 👋
+          </Text>
         </View>
+
+        {/* ⭐ Logout Button */}
+        <TouchableOpacity onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={30} color="#001F3F" />
+        </TouchableOpacity>
       </View>
 
       {/* Active Loan Card */}
-      <View style={styles.loanCard}>
-        <Text style={styles.cardTitle}>Active Loan</Text>
-        <Text style={styles.loanAmount}>₹50,000</Text>
+      {loan ? (
+        <View style={styles.loanCard}>
+          <Text style={styles.cardTitle}>Active Loan</Text>
 
-        <View style={styles.row}>
-          <Text style={styles.smallLabel}>Tenure: 12 months</Text>
-          <Text style={styles.smallLabel}>EMI:</Text>
-          <Text style={styles.highlight}>₹4,500</Text>
+          <Text style={styles.loanAmount}>₹{loan.amount?.toLocaleString()}</Text>
+
+          <View style={styles.row}>
+            <Text style={styles.smallLabel}>Tenure: {loan.months} months</Text>
+            <Text style={styles.smallLabel}>EMI:</Text>
+            <Text style={styles.highlight}>₹{loan.emi}</Text>
+          </View>
+
+          <TouchableOpacity style={styles.primaryButton}>
+            <Text style={styles.primaryButtonText}>Pay EMI</Text>
+          </TouchableOpacity>
         </View>
-
-        <TouchableOpacity style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Pay EMI</Text>
-        </TouchableOpacity>
-      </View>
+      ) : (
+        <Text style={{ textAlign: "center", marginVertical: 20, color: "#6C757D" }}>
+          No active loan found.
+        </Text>
+      )}
 
       {/* Upcoming EMI */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Upcoming EMI</Text>
-        <Text style={styles.sectionText}>Due on: 12 Dec 2025</Text>
-        <Text style={styles.sectionAmount}>₹4,500</Text>
+      {loan && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Upcoming EMI</Text>
+          <Text style={styles.sectionText}>Due on: 12 Dec 2025</Text>
+          <Text style={styles.sectionAmount}>₹{loan.emi}</Text>
 
-        <TouchableOpacity>
-          <Text style={styles.link}>View repayment schedule →</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity>
+            <Text style={styles.link}>View repayment schedule →</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
-      {/* EMI Adjustment */}
+      {/* EMI Calculator */}
       <View style={styles.calculator}>
         <Text style={styles.calcTitle}>Adjust EMI</Text>
 
@@ -99,85 +149,163 @@ export default function Dashboard({ navigation }) {
           <Text style={styles.primaryButtonText}>Check Eligibility</Text>
         </TouchableOpacity>
       </View>
-
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff", padding: 16 },
+  container: { 
+    flex: 1, 
+    backgroundColor: "#fff", 
+    padding: 16 
+  },
 
-  // Header
-  header: { marginBottom: 20 ,marginTop:30},
-  greeting: { fontSize: 14, color: "#6C757D" },
-  username: { fontSize: 24, fontWeight: "700", color: "#001F3F" },
+  // ⭐ Header with Logout icon
+  headerRow: {
+    marginTop: 30,
+    marginBottom: 20,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  greeting: { 
+    fontSize: 14, 
+    color: "#6C757D" 
+  },
+  username: { 
+    fontSize: 24, 
+    fontWeight: "700", 
+    color: "#001F3F" 
+  },
 
-  // Loan card
+  // ⭐ Loan Card
   loanCard: {
     backgroundColor: "#001F3F",
     padding: 20,
     borderRadius: 16,
-    marginBottom: 20
+    marginBottom: 20,
   },
-  cardTitle: { color: "#fff", fontSize: 16, marginBottom: 8 },
-  loanAmount: { color: "#FFD700", fontSize: 30, fontWeight: "700" },
-  row: { flexDirection: "row", justifyContent: "space-between", marginTop: 10 },
-  smallLabel: { color: "#fff" },
-  highlight: { color: "#FFD700", fontWeight: "700" },
-
+  cardTitle: { 
+    color: "#fff", 
+    fontSize: 16, 
+    marginBottom: 8 
+  },
+  loanAmount: { 
+    color: "#FFD700", 
+    fontSize: 30, 
+    fontWeight: "700" 
+  },
+  row: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    marginTop: 10 
+  },
+  smallLabel: { 
+    color: "#fff" 
+  },
+  highlight: { 
+    color: "#FFD700", 
+    fontWeight: "700" 
+  },
   primaryButton: {
     backgroundColor: "#FFD700",
     padding: 12,
     borderRadius: 10,
     marginTop: 15,
   },
-  primaryButtonText: { color: "#001F3F", fontWeight: "700", textAlign: "center" },
+  primaryButtonText: { 
+    color: "#001F3F", 
+    fontWeight: "700", 
+    textAlign: "center" 
+  },
 
-  // Sections
-  section: { marginBottom: 25 },
-  sectionTitle: { fontSize: 18, fontWeight: "700", marginBottom: 5 },
-  sectionText: { color: "#6C757D" },
-  sectionAmount: { fontSize: 22, fontWeight: "700", marginVertical: 8 },
-  link: { color: "#001F3F", fontWeight: "700" },
+  // ⭐ Sections (Upcoming EMI, Quick Actions title)
+  section: { 
+    marginBottom: 25 
+  },
+  sectionTitle: { 
+    fontSize: 18, 
+    fontWeight: "700", 
+    marginBottom: 5 
+  },
+  sectionText: { 
+    color: "#6C757D" 
+  },
+  sectionAmount: { 
+    fontSize: 22, 
+    fontWeight: "700", 
+    marginVertical: 8 
+  },
+  link: { 
+    color: "#001F3F", 
+    fontWeight: "700" 
+  },
 
-  // EMI Calculator
+  // ⭐ EMI Calculator Card
   calculator: {
     backgroundColor: "#f7f7f7",
     padding: 16,
     borderRadius: 12,
     marginBottom: 25,
   },
-  calcTitle: { fontSize: 18, fontWeight: "700", marginBottom: 8 },
-  calcLabel: { marginBottom: 10, fontSize: 16 },
-
+  calcTitle: { 
+    fontSize: 18, 
+    fontWeight: "700", 
+    marginBottom: 8 
+  },
+  calcLabel: { 
+    marginBottom: 10, 
+    fontSize: 16 
+  },
   secondaryButton: {
     backgroundColor: "#001F3F",
     padding: 10,
     borderRadius: 10,
     marginTop: 10,
   },
-  secondaryButtonText: { color: "#fff", textAlign: "center", fontWeight: "700" },
+  secondaryButtonText: { 
+    color: "#fff", 
+    textAlign: "center", 
+    fontWeight: "700" 
+  },
 
-  // Quick Actions
-  quickActions: { marginBottom: 20 },
-  actionRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 10 },
+  // ⭐ Quick Actions Grid
+  quickActions: { 
+    marginBottom: 20 
+  },
+  actionRow: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    marginBottom: 10 
+  },
   actionBox: {
     flex: 1,
     padding: 16,
     borderWidth: 1,
     borderColor: "#6C757D",
     borderRadius: 12,
-    marginRight: 10
+    marginRight: 10,
   },
-  actionText: { color: "#001F3F", fontSize: 16, fontWeight: "600" },
+  actionText: { 
+    color: "#001F3F", 
+    fontSize: 16, 
+    fontWeight: "600" 
+  },
 
-  // Offers
+  // ⭐ Offers Card
   offersBox: {
     backgroundColor: "#001F3F",
     padding: 18,
     borderRadius: 16,
     marginBottom: 30,
   },
-  offersTitle: { fontSize: 20, fontWeight: "700", color: "#FFD700" },
-  offersDesc: { color: "#fff", marginVertical: 10 },
+  offersTitle: { 
+    fontSize: 20, 
+    fontWeight: "700", 
+    color: "#FFD700" 
+  },
+  offersDesc: { 
+    color: "#fff", 
+    marginVertical: 10 
+  },
 });

@@ -3,91 +3,105 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from "reac
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Otp({ route, navigation }) {
-  const { mobile } = route.params;
+  const { mobile } = route.params ?? {};
+
   const inputRefs = useRef([]);
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [timer, setTimer] = useState(30);
-  const [generatedOtp, setGeneratedOtp] = useState("");
 
-  // Generate OTP Function
   const generateOtp = async () => {
     const newOtp = (Math.floor(100000 + Math.random() * 900000)).toString();
-    setGeneratedOtp(newOtp);
-    console.log("📌 Generated OTP:", newOtp);
     await AsyncStorage.setItem("userOtp", newOtp);
+    console.log("📌 OTP:", newOtp);
   };
 
-  // Run once on screen load
   useEffect(() => {
-    generateOtp(); // generate OTP
+    generateOtp();
     startTimer();
   }, []);
 
-  // Start / Restart Timer
   const startTimer = () => {
     setTimer(30);
     const countdown = setInterval(() => {
       setTimer(prev => {
         if (prev === 1) clearInterval(countdown);
-        return prev > 0 ? prev - 1 : 0;
+        return prev - 1;
       });
     }, 1000);
   };
 
-  // Handle OTP Input
   const handleChange = (text, index) => {
-    const otpArray = [...otp];
-    otpArray[index] = text;
-    setOtp(otpArray);
+    const updated = [...otp];
+    updated[index] = text;
+    setOtp(updated);
 
     if (text.length === 1 && index < 5) {
-      inputRefs.current[index + 1].focus();
+      inputRefs.current[index + 1]?.focus();
     }
   };
 
-  // Resend OTP Function
   const resendOtp = async () => {
-    await generateOtp();   // generate new OTP
-    startTimer();          // restart timer
-    setOtp(["", "", "", "", "", ""]); // clear boxes
-
-    // Clear input fields visually
-    inputRefs.current.forEach(input => {
-      if (input) input.clear();
-    });
-
-    Alert.alert("OTP Sent", "A new OTP has been sent!");
+    await generateOtp();
+    startTimer();
+    setOtp(["", "", "", "", "", ""]);
+    inputRefs.current.forEach(input => input?.clear());
   };
 
-  // Verify OTP
   const verifyOtp = async () => {
-    const enteredOtp = otp.join("");
-    const storedOtp = await AsyncStorage.getItem("userOtp");
+    const entered = otp.join("");
+    const stored = await AsyncStorage.getItem("userOtp");
 
-    console.log("Entered:", enteredOtp, "Stored:", storedOtp);
-
-    if (enteredOtp === storedOtp) {
-      Alert.alert("Success", "OTP verified successfully!");
-      navigation.navigate("BasicInfo");
-    } else {
-      Alert.alert("Error", "Invalid OTP. Please try again.");
+    if (entered !== stored) {
+      Alert.alert("Incorrect OTP", "Try again.");
+      return;
     }
+
+    Alert.alert("Success", "OTP Verified!");
+
+    // -----------------------------------------------------
+    // CHECK USER & LOAN STATUS
+    // -----------------------------------------------------
+    const userData = await AsyncStorage.getItem("@BasicInfoData");
+    const loanData = await AsyncStorage.getItem("loanDetails");
+
+    if (userData) {
+      const parsed = JSON.parse(userData);
+
+      if (parsed.mobile === mobile) {
+
+        // ⭐ Loan exists → go to dashboard
+        if (loanData) {
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Dashboard" }],
+          });
+          return;
+        }
+
+        // ⭐ Existing user but no loan → skip BasicInfo
+        navigation.navigate("ProfessionalInfo");
+        return;
+      }
+    }
+
+    // ⭐ New user → start from BasicInfo
+    navigation.navigate("BasicInfo", { mobile });
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>OTP Verification</Text>
-      <Text style={styles.subtitle}>Sent to +91 {mobile}</Text>
+      <Text style={styles.subtitle}>Sent to: +91 {mobile}</Text>
 
       <View style={styles.otpContainer}>
         {otp.map((_, index) => (
           <TextInput
             key={index}
-            ref={(ref) => (inputRefs.current[index] = ref)}
-            style={styles.otpInput}
-            keyboardType="number-pad"
             maxLength={1}
+            keyboardType="number-pad"
+            ref={(ref) => (inputRefs.current[index] = ref)}
             onChangeText={(text) => handleChange(text, index)}
+            style={styles.otpInput}
             autoFocus={index === 0}
           />
         ))}
@@ -109,58 +123,19 @@ export default function Otp({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#fff",
-    paddingHorizontal: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-  },
-  subtitle: {
-    marginVertical: 8,
-    fontSize: 14,
-    color: "#777",
-  },
-  otpContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    width: "90%",
-    marginVertical: 20,
-  },
+  container: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff" },
+  title: { fontSize: 28, fontWeight: "700" },
+  subtitle: { marginTop: 10, color: "#777" },
+  otpContainer: { flexDirection: "row", gap: 10, marginVertical: 20 },
   otpInput: {
-    width: 45,
-    height: 55,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    textAlign: "center",
-    fontSize: 20,
+    width: 45, height: 55, borderWidth: 1, borderColor: "#ccc",
+    borderRadius: 10, textAlign: "center", fontSize: 20,
   },
-  timer: {
-    color: "#555",
-    marginBottom: 20,
-  },
-  resend: {
-    color: "#001F54",
-    fontWeight: "700",
-    marginBottom: 20,
-    fontSize: 16,
-  },
+  timer: { marginBottom: 10, color: "#555" },
+  resend: { color: "#001F54", fontSize: 16 },
   button: {
-    width: "90%",
-    height: 50,
-    backgroundColor: "#001F54",
-    borderRadius: 10,
-    justifyContent: "center",
-    alignItems: "center",
+    width: "80%", height: 50, backgroundColor: "#001F54",
+    justifyContent: "center", alignItems: "center", borderRadius: 10,
   },
-  buttonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-  },
+  buttonText: { color: "#fff", fontSize: 18, fontWeight: "600" },
 });

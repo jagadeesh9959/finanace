@@ -1,17 +1,34 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import Slider from "@react-native-community/slider";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function EmiCalculator({ navigation }) {
   const [amount, setAmount] = useState(50000);
   const [months, setMonths] = useState(12);
 
   const calculateEmi = () => {
-    let rate = 0.015; // 1.5%
+    const rate = 0.015; // 1.5%
     return Math.round(
       (amount * rate * Math.pow(1 + rate, months)) /
         (Math.pow(1 + rate, months) - 1)
     );
+  };
+
+  const saveAndContinue = async () => {
+    try {
+      const loanData = {
+        amount,
+        months,
+        emi: calculateEmi(),
+        interestRate: 1.5,
+      };
+
+      await AsyncStorage.setItem("loanDetails", JSON.stringify(loanData));
+      navigation.navigate("FinalSteps");
+    } catch (e) {
+      console.log("Error saving loan data:", e);
+    }
   };
 
   return (
@@ -41,10 +58,7 @@ export default function EmiCalculator({ navigation }) {
         <Text style={styles.caption}>Estimated Monthly EMI</Text>
       </View>
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => navigation.navigate("FinalSteps")}
-      >
+      <TouchableOpacity style={styles.button} onPress={saveAndContinue}>
         <Text style={styles.buttonText}>Continue</Text>
       </TouchableOpacity>
     </View>
