@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function Loans({ navigation }) {
@@ -15,9 +16,10 @@ export default function Loans({ navigation }) {
         const loanData = await AsyncStorage.getItem("loanDetails");
 
         if (userData) setUser(JSON.parse(userData));
-        
+
         if (loanData) {
           const parsedLoan = JSON.parse(loanData);
+
           setLoans([
             {
               id: 1,
@@ -52,11 +54,18 @@ export default function Loans({ navigation }) {
     fetchData();
   }, []);
 
-  const handleLogout = async () => {
-    navigation.reset({
-      index: 0,
-      routes: [{ name: "login" }],
-    });
+  const handleLogout = () => {
+    Alert.alert("Logout", "Are you sure?", [
+      { text: "Cancel" },
+      {
+        text: "Logout",
+        onPress: () =>
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "login" }],
+          }),
+      },
+    ]);
   };
 
   const filterLoans = () => {
@@ -81,63 +90,63 @@ export default function Loans({ navigation }) {
     return status.charAt(0).toUpperCase() + status.slice(1);
   };
 
-  const LoanCard = ({ loan }) => (
-    <View style={styles.loanCard}>
-      <View style={styles.cardHeader}>
-        <View>
-          <Text style={styles.loanId}>Loan #{loan.id}</Text>
-          <Text style={styles.createdDate}>{loan.createdDate}</Text>
-        </View>
-        <View
-          style={[
-            styles.statusBadge,
-            { backgroundColor: getStatusColor(loan.status) },
-          ]}
-        >
-          <Text style={styles.statusText}>{getStatusText(loan.status)}</Text>
-        </View>
-      </View>
-
-      <View style={styles.divider} />
-
-      <View style={styles.cardContent}>
-        <View style={styles.amountSection}>
-          <Text style={styles.amountLabel}>Loan Amount</Text>
-          <Text style={styles.amount}>₹{loan.amount?.toLocaleString()}</Text>
+  const LoanCard = ({ loan }) => {
+    return (
+      <View style={styles.loanCard}>
+        <View style={styles.cardHeader}>
+          <View>
+            <Text style={styles.loanId}>Loan #{loan.id}</Text>
+            <Text style={styles.createdDate}>{loan.createdDate}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(loan.status) }]}>
+            <Text style={styles.statusText}>{getStatusText(loan.status)}</Text>
+          </View>
         </View>
 
-        <View style={styles.detailsGrid}>
-          <View style={styles.detailBox}>
-            <Text style={styles.detailLabel}>EMI</Text>
-            <Text style={styles.detailValue}>₹{loan.emi}</Text>
+        <View style={styles.divider} />
+
+        <View style={styles.cardContent}>
+          <View style={styles.amountSection}>
+            <Text style={styles.amountLabel}>Loan Amount</Text>
+            <Text style={styles.amount}>₹{loan.amount?.toLocaleString()}</Text>
           </View>
 
-          <View style={styles.detailBox}>
-            <Text style={styles.detailLabel}>Tenure</Text>
-            <Text style={styles.detailValue}>{loan.months} mo</Text>
-          </View>
-
-          {loan.status === "paid" && (
+          <View style={styles.detailsGrid}>
             <View style={styles.detailBox}>
-              <Text style={styles.detailLabel}>Paid</Text>
-              <Text style={styles.detailValue}>
-                ₹{loan.paidAmount?.toLocaleString()}
-              </Text>
+              <Text style={styles.detailLabel}>EMI</Text>
+              <Text style={styles.detailValue}>₹{loan.emi}</Text>
             </View>
-          )}
-        </View>
-      </View>
 
-      <TouchableOpacity style={styles.detailsButton}>
-        <Text style={styles.detailsButtonText}>View Details</Text>
-        <Ionicons name="arrow-forward" size={18} color="#001F3F" />
-      </TouchableOpacity>
-    </View>
-  );
+            <View style={styles.detailBox}>
+              <Text style={styles.detailLabel}>Tenure</Text>
+              <Text style={styles.detailValue}>{loan.months} mo</Text>
+            </View>
+
+            {loan.status === "paid" && (
+              <View style={styles.detailBox}>
+                <Text style={styles.detailLabel}>Paid</Text>
+                <Text style={styles.detailValue}>₹{loan.paidAmount?.toLocaleString()}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* REMOVED Progress Section Completely */}
+
+        <TouchableOpacity 
+          style={styles.detailsButton}
+          onPress={() => Alert.alert("Loan Details", `Loan #${loan.id}\nAmount: ₹${loan.amount}\nStatus: ${loan.status}`)}
+        >
+          <Text style={styles.detailsButtonText}>View Details</Text>
+          <Ionicons name="arrow-forward" size={18} color="#001F3F" />
+        </TouchableOpacity>
+      </View>
+    );
+  };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* HEADER WITH LOGOUT */}
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+      {/* HEADER */}
       <View style={styles.headerRow}>
         <View>
           <Text style={styles.greeting}>Your Loans</Text>
@@ -157,26 +166,14 @@ export default function Loans({ navigation }) {
           style={[styles.tab, activeTab === "all" && styles.activeTab]}
           onPress={() => setActiveTab("all")}
         >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "all" && styles.activeTabText,
-            ]}
-          >
-            All
-          </Text>
+          <Text style={[styles.tabText, activeTab === "all" && styles.activeTabText]}>All</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.tab, activeTab === "active" && styles.activeTab]}
           onPress={() => setActiveTab("active")}
         >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "active" && styles.activeTabText,
-            ]}
-          >
+          <Text style={[styles.tabText, activeTab === "active" && styles.activeTabText]}>
             Active
           </Text>
         </TouchableOpacity>
@@ -185,12 +182,7 @@ export default function Loans({ navigation }) {
           style={[styles.tab, activeTab === "paid" && styles.activeTab]}
           onPress={() => setActiveTab("paid")}
         >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "paid" && styles.activeTabText,
-            ]}
-          >
+          <Text style={[styles.tabText, activeTab === "paid" && styles.activeTabText]}>
             Paid
           </Text>
         </TouchableOpacity>
@@ -199,66 +191,63 @@ export default function Loans({ navigation }) {
           style={[styles.tab, activeTab === "default" && styles.activeTab]}
           onPress={() => setActiveTab("default")}
         >
-          <Text
-            style={[
-              styles.tabText,
-              activeTab === "default" && styles.activeTabText,
-            ]}
-          >
+          <Text style={[styles.tabText, activeTab === "default" && styles.activeTabText]}>
             Default
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* LOANS LIST */}
-      <View style={styles.loansSection}>
-        {filterLoans().length > 0 ? (
-          filterLoans().map((loan) => <LoanCard key={loan.id} loan={loan} />)
-        ) : (
-          <View style={styles.emptyState}>
-            <Ionicons name="document-outline" size={48} color="#6C757D" />
-            <Text style={styles.emptyText}>No {activeTab} loans found</Text>
-          </View>
-        )}
-      </View>
+      {/* LOAN LIST */}
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.loansSection}>
+          {filterLoans().length > 0 ? (
+            filterLoans().map((loan) => <LoanCard key={loan.id} loan={loan} />)
+          ) : (
+            <View style={styles.emptyState}>
+              <Ionicons name="document-outline" size={48} color="#6C757D" />
+              <Text style={styles.emptyText}>No {activeTab} loans found</Text>
+            </View>
+          )}
+        </View>
 
-      {/* ACTION BUTTONS */}
-      <View style={styles.actionSection}>
-        <TouchableOpacity style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Apply for New Loan</Text>
-        </TouchableOpacity>
+        {/* ACTION BUTTONS */}
+        <View style={styles.actionSection}>
+          <TouchableOpacity 
+            style={styles.primaryButton}
+            onPress={() => navigation.navigate("offers")}
+          >
+            <Text style={styles.primaryButtonText}>Apply for New Loan</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.secondaryButton}>
-          <Text style={styles.secondaryButtonText}>Download Statement</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+          <TouchableOpacity 
+            style={styles.secondaryButton}
+            onPress={() => Alert.alert("Download", "Statement downloaded successfully!")}
+          >
+            <Text style={styles.secondaryButtonText}>Download Statement</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    padding: 16,
-  },
-
   headerRow: {
-    marginTop: 30,
-    marginBottom: 20,
+    marginTop: 10,
+    marginBottom: 10,
+    paddingHorizontal: 20,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
   },
-  greeting: {
-    fontSize: 14,
-    color: "#6C757D",
+
+  content: {
+    flex: 1,
+    paddingHorizontal: 10,
   },
-  username: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#001F3F",
-  },
+
+  greeting: { fontSize: 14, color: "#6C757D" },
+  username: { fontSize: 24, fontWeight: "700", color: "#001F3F" },
 
   tabContainer: {
     flexDirection: "row",
@@ -287,6 +276,8 @@ const styles = StyleSheet.create({
 
   loansSection: {
     marginBottom: 20,
+    paddingVertical: 20,
+    paddingHorizontal: 10,
   },
   loanCard: {
     backgroundColor: "#f9f9f9",
@@ -302,49 +293,23 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
   },
-  loanId: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#001F3F",
-  },
-  createdDate: {
-    fontSize: 12,
-    color: "#6C757D",
-    marginTop: 4,
-  },
+  loanId: { fontSize: 16, fontWeight: "700", color: "#001F3F" },
+  createdDate: { fontSize: 12, color: "#6C757D", marginTop: 4 },
+
   statusBadge: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
-  statusText: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
-  },
+  statusText: { color: "#fff", fontSize: 12, fontWeight: "600" },
 
-  divider: {
-    height: 1,
-    backgroundColor: "#e0e0e0",
-    marginBottom: 12,
-  },
+  divider: { height: 1, backgroundColor: "#e0e0e0", marginBottom: 12 },
 
-  cardContent: {
-    marginBottom: 12,
-  },
-  amountSection: {
-    marginBottom: 12,
-  },
-  amountLabel: {
-    fontSize: 12,
-    color: "#6C757D",
-    marginBottom: 4,
-  },
-  amount: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#001F3F",
-  },
+  cardContent: { marginBottom: 12 },
+  amountSection: { marginBottom: 12 },
+
+  amountLabel: { fontSize: 12, color: "#6C757D", marginBottom: 4 },
+  amount: { fontSize: 24, fontWeight: "700", color: "#001F3F" },
 
   detailsGrid: {
     flexDirection: "row",
@@ -359,16 +324,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginHorizontal: 4,
   },
-  detailLabel: {
-    fontSize: 11,
-    color: "#6C757D",
-    marginBottom: 4,
-  },
-  detailValue: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#001F3F",
-  },
+  detailLabel: { fontSize: 11, color: "#6C757D", marginBottom: 4 },
+  detailValue: { fontSize: 14, fontWeight: "700", color: "#001F3F" },
 
   detailsButton: {
     flexDirection: "row",
@@ -378,41 +335,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     justifyContent: "center",
     alignItems: "center",
-    gap: 8,
   },
-  detailsButtonText: {
-    color: "#001F3F",
-    fontWeight: "600",
-    fontSize: 14,
-  },
+  detailsButtonText: { color: "#001F3F", fontWeight: "600", fontSize: 14 },
 
-  emptyState: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 40,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: "#6C757D",
-    marginTop: 12,
-    textAlign: "center",
-  },
+  emptyState: { alignItems: "center", paddingVertical: 40 },
+  emptyText: { fontSize: 16, color: "#6C757D", marginTop: 12 },
 
-  actionSection: {
-    marginBottom: 30,
-    gap: 12,
-  },
+  actionSection: { marginBottom: 30, paddingHorizontal: 10 },
   primaryButton: {
     backgroundColor: "#001F3F",
     paddingVertical: 14,
     borderRadius: 10,
     alignItems: "center",
+    marginBottom: 12,
   },
-  primaryButtonText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 16,
-  },
+  primaryButtonText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 
   secondaryButton: {
     backgroundColor: "#FFD700",
@@ -420,9 +357,5 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
   },
-  secondaryButtonText: {
-    color: "#001F3F",
-    fontWeight: "700",
-    fontSize: 16,
-  },
+  secondaryButtonText: { color: "#001F3F", fontWeight: "700", fontSize: 16 },
 });

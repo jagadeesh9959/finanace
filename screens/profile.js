@@ -336,7 +336,10 @@ export default function Profile({ navigation }) {
           <View>
             <Text style={styles.sectionTitle}>Settings</Text>
 
-            <TouchableOpacity style={styles.settingItem}>
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={() => Alert.alert("Language", "Language selection coming soon!")}
+            >
               <View style={styles.settingLeft}>
                 <MaterialIcons name="language" size={24} color="#D4AF37" />
                 <Text style={styles.settingText}>Language</Text>
